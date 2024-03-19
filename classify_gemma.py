@@ -66,7 +66,7 @@ def categorize_question(question: str) -> int:
     # Load prompting data
     import pandas as pd
 
-    data = pd.read_csv('questions2.csv')
+    data = pd.read_csv('questions.csv')
     # print(data.head())
 
     # Add "Question: " to the beginning of each question
