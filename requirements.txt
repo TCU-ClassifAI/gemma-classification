@@ -1,0 +1,8 @@
+python_dotenv
+kagglehub
+torch
+immutabledict
+sentencepiece
+flask
+pandas
+packaging
