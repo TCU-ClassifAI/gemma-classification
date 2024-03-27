@@ -1,6 +1,8 @@
 
 
 import sys
+import torch
+from transformers import pipeline
 
 
 def categorize_question(question: str) -> int:
@@ -97,12 +99,13 @@ def categorize_question(question: str) -> int:
             str: A formatted chat prompt ready for model use.
         """
 
-        CLASSIFICATION_INTRO = """You are designed to categorize questions according to Higher or Lower Order Thinking.
-        Level 1 questions focus on gathering and recalling information. 
-        Level 2 questions focus on making sense of gathered information, or questions focus on applying and evaluating information.
-        Level 0 questions are rhetorical questions or other sorts that don't fit the model. Be careful to classify these questions correctly.
+        CLASSIFICATION_INTRO = """You are designed to categorize questions according to Costa's Levels of Questioning. 
+        Level 1 questions focus on gathering and recalling information. An example of a Level 1 question is "What is the command to list files in a directory?"
+        Level 2 questions focus on making sense of gathered information. An example of a Level 2 question is "How does the 'ls' command work?"
+        Level 3 questions focus on applying and evaluating information. An example of a Level 3 question is "What would the world be like if the 'ls' command didn't exist?"
+        Level 0 questions are rhetorical questions or other sorts that don't fit the model. Be careful to classify these questions correctly, thinking about the intent behind the question.
         You will be given a series of questions to classify. Please provide the classification for each question.
-        You can respond with 0, 1, or 2 to indicate the classification.
+        You can respond with 0, 1, 2, or 3 to indicate the classification.
         """
 
         USER_CHAT_TEMPLATE = '<start_of_turn>user\n{prompt}<end_of_turn>\n'
@@ -165,6 +168,9 @@ def categorize_question(question: str) -> int:
             # try to format the response as an integer. If it fails, retry 3 times, then return 0
             try:
                 response = int(response)
+                # raise an error if the response is not 0-3
+                if response not in [0, 1, 2, 3]:
+                    raise ValueError(f"Invalid response: {response}")
                 return response
             except:
                 response = 0
@@ -175,9 +181,20 @@ def categorize_question(question: str) -> int:
     response = generate_with_retries(model, prompt, device)
     return response
 
-# # Test the function
-# reply = categorize_question('What is the capital of California?')
-# print(reply)  # 1
+def summarize_text(text: str) -> str:
+    
+
+    summarizer = pipeline(
+        "summarization",
+        "pszemraj/long-t5-tglobal-base-16384-book-summary",
+        device=0 if torch.cuda.is_available() else -1,
+    )
+
+    long_text = "This is a classroom transcript and you are to summarize what the teacher is teaching. " + text
+
+    result = summarizer(long_text)
+    print(result[0]["summary_text"])
+
 
 
 def num_chars_in_question(question: str) -> int:
@@ -208,6 +225,12 @@ if __name__ == "__main__":
     def categorize_question_route():
         question = request.json['question']
         response = categorize_question(question)
+        return jsonify({'response': response})
+
+    @app.route('/summarize', methods=['POST'])
+    def summarize_text_route():
+        text = request.json['text']
+        response = summarize_text(text)
         return jsonify({'response': response})
     
     @app.route('/healthcheck', methods=['GET'])
